@@ -12,4 +12,5 @@ EXPOSE 8000
 FROM alpine
 COPY --from=build /out /server
 COPY assets /assets
+COPY config /config
 ENTRYPOINT "/server"

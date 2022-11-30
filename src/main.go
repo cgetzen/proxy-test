@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/spf13/viper"
 )
 
 var serveRoot = "/assets"
@@ -16,9 +17,30 @@ var serveRoot = "/assets"
 func main() {
 	fmt.Println("Starting...")
 	r := mux.NewRouter()
-	r.HandleFunc("/index.html", serveFile("index.html"))
-	r.HandleFunc("/page1.html", serveFile("page1.html"))
-	r.Handle("/redirect", http.RedirectHandler("/page1.html", http.StatusFound))
+
+	// Enhancement #2 - Handle redirect configurations
+	redirects, ok := loadConfig()
+	if ok {
+		for source, dest := range redirects {
+			fmt.Printf("Adding redirect from /%s to /%s\n", source, dest)
+			r.Handle(fmt.Sprintf("/%s", source), http.RedirectHandler(fmt.Sprintf("/%s", dest), http.StatusFound))
+		}
+	}
+
+	// Enhancement #2 - Add assets without code change
+	files, err := os.ReadDir("assets/")
+	if err != nil {
+		fmt.Printf("Unable to list assets: %s. Ignoring.\n", err.Error())
+	}
+	for _, file := range files {
+		name := file.Name()
+		if redirects[name] != nil {
+			fmt.Printf("Redirect already set up for path %s. Will not serve file.\n", name)
+			continue
+		}
+		r.HandleFunc(fmt.Sprintf("/%s", name), serveFile(name))
+	}
+
 	log.Fatal(http.ListenAndServe(":8000", r))
 }
 
@@ -34,4 +56,21 @@ func serveFile(name string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		http.ServeContent(w, r, name, time.Now(), bytes.NewReader(f))
 	}
+}
+
+// Enhancement #2 - Handle redirect configurations
+func loadConfig() (ret map[string]interface{}, ok bool) {
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath("config/")
+	if err := viper.ReadInConfig(); err != nil {
+		fmt.Printf("Unable to load config: %s. Ignoring.\n", err.Error())
+		return nil, false
+	}
+	// Check the format of the config file
+	ret, ok = viper.Get("redirects").(map[string]interface{})
+	if !ok {
+		fmt.Printf("Unable to parse config. Ignoring.\n")
+	}
+	return
 }
