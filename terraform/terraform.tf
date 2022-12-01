@@ -38,6 +38,17 @@ resource "kubernetes_deployment" "this" {
               name = "environment"
             }
           }
+          volume_mount {
+            name       = "config"
+            mount_path = "/assets/config.html"
+            sub_path   = "config.html"
+          }
+        }
+        volume {
+          name = "config"
+          config_map {
+            name = "config"
+          }
         }
       }
     }
@@ -52,5 +63,16 @@ resource "kubernetes_config_map" "environment" {
 
   data = {
     TEMPLATE_DATA = "Hello World."
+  }
+}
+
+# Enhancement 4
+resource "kubernetes_config_map" "config" {
+  metadata {
+    name = "config"
+  }
+
+  data = {
+    "config.html" = "This is a config file."
   }
 }

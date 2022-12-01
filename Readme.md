@@ -40,3 +40,14 @@ Previously, each asset was hard-coded. Now, the server will look up and serve ev
 # Enhancement #3
 
 This is implemented by changing the filename to end with `.tpl`. The contents of the environment variable `TEMPLATE_DATA` will be displayed.
+
+# Enhancement #4
+```
+kubectl logs proxy-test-68b7c56b4d-pd659
+Starting...
+Adding redirect from /page1.html to /page2.html
+Caching config.html
+Caching index.html
+Redirect already set up for path page1.html. Will not serve file.
+Caching page2.html
+```
