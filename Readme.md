@@ -36,3 +36,7 @@ Which indicate that page1.html should be 302'd to page2.html
 
 ## Load all assets
 Previously, each asset was hard-coded. Now, the server will look up and serve everything under  assets/
+
+# Enhancement #3
+
+This is implemented by changing the filename to end with `.tpl`. The contents of the environment variable `TEMPLATE_DATA` will be displayed.

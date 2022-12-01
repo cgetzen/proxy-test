@@ -3,21 +3,31 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 )
 
-var serveRoot = "/assets"
+var serveRoot = "assets"
+var templateEnvironment = "TEMPLATE_DATA"
+
+type TemplateData struct {
+	Data string
+}
+
+var Environment = TemplateData{}
 
 func main() {
 	fmt.Println("Starting...")
-	r := mux.NewRouter()
+	loadEnv()
 
+	r := mux.NewRouter()
 	// Enhancement #2 - Handle redirect configurations
 	redirects, ok := loadConfig()
 	if ok {
@@ -38,10 +48,37 @@ func main() {
 			fmt.Printf("Redirect already set up for path %s. Will not serve file.\n", name)
 			continue
 		}
-		r.HandleFunc(fmt.Sprintf("/%s", name), serveFile(name))
+		if strings.Contains(name, ".tpl") {
+			r.HandleFunc(fmt.Sprintf("/%s", name[:len(name)-4]), serveTemplate(name))
+		} else {
+			r.HandleFunc(fmt.Sprintf("/%s", name), serveFile(name))
+		}
 	}
 
 	log.Fatal(http.ListenAndServe(":8000", r))
+}
+
+func loadEnv() {
+	Environment = TemplateData{
+		Data: os.Getenv(templateEnvironment),
+	}
+}
+
+// Enhancement 3 - Environment Variable Templates
+func serveTemplate(name string) func(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("Caching %s\n", name[:len(name)-4])
+
+	tmplFile, err := template.ParseFiles(fmt.Sprintf("%s/%s", serveRoot, name))
+	if err != nil {
+		fmt.Printf("Templating error: %s. Ignoring\n", err.Error())
+		return func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		tmplFile.ExecuteTemplate(w, name, Environment)
+	}
+
 }
 
 func serveFile(name string) func(w http.ResponseWriter, r *http.Request) {
